@@ -6,6 +6,8 @@ import { RequestDetails as RequestDetailsType, RequestStatus, UpdateStatusParams
 import requestService from '@/services/requestService';
 import Link from 'next/link';
 import StatusBadge from '@/components/requests/StatusBadge';
+import WhatsappVerification from '@/components/clients/WhatsappVerification';
+import clientService from '@/services/clientService';
 
 interface RequestDetailsProps {
     requestId: string;
@@ -29,6 +31,8 @@ export default function RequestDetails({ requestId, onStatusUpdate }: RequestDet
     const [statusComment, setStatusComment] = useState('');
     const [showStatusModal, setShowStatusModal] = useState(false);
     const [showAssignModal, setShowAssignModal] = useState(false);
+    const [isClientVerified, setIsClientVerified] = useState(false);
+    const [showClientVerification, setShowClientVerification] = useState(false);
 
     // Charger les détails de la demande
     useEffect(() => {
@@ -49,6 +53,21 @@ export default function RequestDetails({ requestId, onStatusUpdate }: RequestDet
 
         loadRequestDetails();
     }, [requestId]);
+
+    useEffect(() => {
+        if (!request?.client.whatsapp_number) return;
+
+        let cancelled = false;
+        (async () => {
+            try {
+                const { data } = await clientService.checkWhatsappNumber(request.client.whatsapp_number);
+                if (!cancelled) setIsClientVerified(data.exists);
+            } catch {
+                if (!cancelled) setIsClientVerified(false);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [request?.client.whatsapp_number]);
 
     // Mettre à jour le statut d'une demande
     const handleStatusUpdate = async () => {
@@ -106,6 +125,19 @@ export default function RequestDetails({ requestId, onStatusUpdate }: RequestDet
             setIsAssigning(false);
         }
     };
+
+    // Gérer le retour de la vérification du client
+    const handleClientSelected = () => {
+        setIsClientVerified(true);
+        setShowClientVerification(false);
+    };
+
+    useEffect(() => {
+        if (isClientVerified !== null) {
+            console.log('isClientVerified =>', isClientVerified);
+        }
+    }, [isClientVerified]);
+  
 
     // Formater une date
     const formatDate = (dateString: string) => {
@@ -173,6 +205,7 @@ export default function RequestDetails({ requestId, onStatusUpdate }: RequestDet
         );
     }
 
+
     return (
         <div className="space-y-6">
             {/* En-tête avec actions */}
@@ -191,7 +224,20 @@ export default function RequestDetails({ requestId, onStatusUpdate }: RequestDet
                     </div>
 
                     <div className="flex flex-wrap gap-2">
-                        {/* Bouton d'assignation */}
+                        {/* Bouton pour s'assigner si non assigné */}
+                        {(!request.assigned_admin && (request.permissions.can_modify || request.status === 'en_attente')) && (
+                            <button
+                                onClick={() => setShowAssignModal(true)}
+                                className="px-3 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-gray-50 flex items-center gap-1"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                                </svg>
+                                M'assigner
+                            </button>
+                        )}
+
+                        {/* Bouton de mise à jour de statut */}
                         {(request.permissions.can_modify || request.status === 'en_attente') && (
                             <button
                                 onClick={() => setShowStatusModal(true)}
@@ -204,31 +250,35 @@ export default function RequestDetails({ requestId, onStatusUpdate }: RequestDet
                             </button>
                         )}
 
-                        {/* Bouton de mise à jour de statut */}
-                        {(request.permissions.can_modify || request.status === 'en_attente') && !request.invoice && ['en_attente', 'en_traitement'].includes(request.status) && (
-                            <Link
-                                href={`/dashboard/requests/${requestId}/invoice/create`}
-                                className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-1"
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                </svg>
-                                Créer une facture
-                            </Link>
-                        )}
-
                         {/* Bouton pour créer une facture si pas déjà facturé */}
-                        {(!request.assigned_admin && (request.permissions.can_modify || request.status === 'en_attente')) && (
-                            <button
-                                onClick={() => setShowAssignModal(true)}
-                                className="px-3 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-gray-50 flex items-center gap-1"
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                                </svg>
-                                M'assigner
-                            </button>
-                        )}
+                        {(request.permissions.can_modify || request.status === 'en_attente') &&
+                            !request.invoice &&
+                            request.status !== 'en_attente' && (
+                                <>
+                                    {isClientVerified === true ? (
+                                        <Link
+                                            href={`/dashboard/requests/${requestId}/invoice/create`}
+                                            className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-1"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                            </svg>
+                                        Créer une facture
+                                        </Link>
+                                    ) : (
+                                        <button
+                                            onClick={() => setShowClientVerification(true)}
+                                            className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-1"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                            </svg>
+                                            Vérifier client et créer facture
+                                        </button>
+                                    )}
+                                </>
+                            )}
+
 
                     </div>
                 </div>
@@ -450,6 +500,39 @@ export default function RequestDetails({ requestId, onStatusUpdate }: RequestDet
                     </div>
                 </div>
             </div>
+
+            {/* Modal pour vérification du client avant de créer une facture */}
+            {showClientVerification && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-lg shadow-lg max-w-md w-full">
+                        <div className="p-4 border-b border-gray-200">
+                            <h3 className="text-lg font-medium text-gray-900">Enregistrement du client</h3>
+                        </div>
+                        <div className="p-4">
+                            <p className="text-gray-600 mb-4">
+                                Avant de créer une facture, veuillez enregistrer les informations du client.
+                            </p>
+
+                            {/* Passer isClientRegistered=false pour indiquer qu'on sait déjà que le client n'est pas enregistré */}
+                            <WhatsappVerification
+                                defaultNumber={request.client.whatsapp_number}
+                                onClientSelected={handleClientSelected}
+                                onClientRegistered={handleClientSelected}
+                                isClientRegistered={false}
+                            />
+                        </div>
+                        <div className="p-4 border-t border-gray-200 flex justify-end space-x-3">
+                            <button
+                                type="button"
+                                onClick={() => setShowClientVerification(false)}
+                                className="px-4 py-2 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50"
+                            >
+                                Annuler
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Modal pour mettre à jour le statut */}
             {showStatusModal && (
