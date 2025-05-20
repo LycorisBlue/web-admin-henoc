@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import RequestDetails from '@/components/requests/RequestDetails';
 
@@ -9,7 +9,6 @@ import RequestDetails from '@/components/requests/RequestDetails';
  * Page de détails d'une demande spécifique
  */
 export default function RequestDetailsPage() {
-    const router = useRouter();
     const params = useParams();
     const requestId = params.id as string;
 
@@ -117,9 +116,9 @@ export default function RequestDetailsPage() {
                             </h3>
                             <ul className="text-sm text-gray-600 space-y-2 list-disc pl-5">
                                 <li>Modifiez le statut de la demande pour suivre son avancement</li>
-                                <li>Assignez-vous la demande si elle n'est pas encore assignée</li>
+                                <li>Assignez-vous la demande si elle n&apos;est pas encore assignée</li>
                                 <li>Consultez tous les détails client et les liens produits</li>
-                                <li>Suivez l'historique des changements de statut</li>
+                                <li>Suivez l&apos;historique des changements de statut</li>
                             </ul>
                         </div>
                         <div>

@@ -38,6 +38,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
     // Fonction pour vérifier si un lien est actif
     const isLinkActive = (href: string) => {
+        // Correction: Vérifie si le pathname actuel correspond à href ou commence par href
+        if (href === '/dashboard') {
+            return pathname === '/dashboard' || pathname === '/dashboard/';
+        }
         return pathname === href || pathname.startsWith(`${href}/`);
     };
 
@@ -86,7 +90,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                         </div>
                     </div>
 
-                    {/* Navigation */}
+                    {/* Navigation - Correction des chemins */}
                     <nav className="flex-1 py-6 overflow-y-auto">
                         <div className="space-y-2 px-3">
                             <Link href="/dashboard" className={getLinkClasses('/dashboard')}>
@@ -95,32 +99,32 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                                 </svg>
                                 <span>Tableau de bord</span>
                             </Link>
-                            <Link href="/dashboard/requests" className={getLinkClasses('/requests')}>
+                            <Link href="/dashboard/requests" className={getLinkClasses('/dashboard/requests')}>
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                                 </svg>
                                 <span>Demandes</span>
                             </Link>
-                            <Link href="/invoices" className={getLinkClasses('/invoices')}>
+                            <Link href="/dashboard/invoices" className={getLinkClasses('/dashboard/invoices')}>
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                 </svg>
                                 <span>Factures</span>
                             </Link>
-                            <Link href="/payments" className={getLinkClasses('/payments')}>
+                            <Link href="/dashboard/payments" className={getLinkClasses('/dashboard/payments')}>
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
                                 <span>Paiements</span>
                             </Link>
-                            <Link href="/clients" className={getLinkClasses('/clients')}>
+                            <Link href="/dashboard/clients" className={getLinkClasses('/dashboard/clients')}>
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                                 </svg>
                                 <span>Clients</span>
                             </Link>
                             {userRole === 'superadmin' && (
-                                <Link href="/admins" className={getLinkClasses('/admins')}>
+                                <Link href="/dashboard/admins" className={getLinkClasses('/dashboard/admins')}>
                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
@@ -189,7 +193,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 </div>
             </header>
 
-            {/* Menu mobile */}
+            {/* Menu mobile - Correction des chemins */}
             {isMobileMenuOpen && (
                 <div className="lg:hidden fixed inset-0 z-30 bg-black bg-opacity-50 backdrop-blur-sm" onClick={toggleMobileMenu}>
                     <div
@@ -231,32 +235,32 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                                     </svg>
                                     <span>Tableau de bord</span>
                                 </Link>
-                                <Link href="/requests" className={getLinkClasses('/requests')} onClick={toggleMobileMenu}>
+                                <Link href="/dashboard/requests" className={getLinkClasses('/dashboard/requests')} onClick={toggleMobileMenu}>
                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                                     </svg>
                                     <span>Demandes</span>
                                 </Link>
-                                <Link href="/invoices" className={getLinkClasses('/invoices')} onClick={toggleMobileMenu}>
+                                <Link href="/dashboard/invoices" className={getLinkClasses('/dashboard/invoices')} onClick={toggleMobileMenu}>
                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                     </svg>
                                     <span>Factures</span>
                                 </Link>
-                                <Link href="/payments" className={getLinkClasses('/payments')} onClick={toggleMobileMenu}>
+                                <Link href="/dashboard/payments" className={getLinkClasses('/dashboard/payments')} onClick={toggleMobileMenu}>
                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
                                     <span>Paiements</span>
                                 </Link>
-                                <Link href="/clients" className={getLinkClasses('/clients')} onClick={toggleMobileMenu}>
+                                <Link href="/dashboard/clients" className={getLinkClasses('/dashboard/clients')} onClick={toggleMobileMenu}>
                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                                     </svg>
                                     <span>Clients</span>
                                 </Link>
                                 {userRole === 'superadmin' && (
-                                    <Link href="/admins" className={getLinkClasses('/admins')} onClick={toggleMobileMenu}>
+                                    <Link href="/dashboard/admins" className={getLinkClasses('/dashboard/admins')} onClick={toggleMobileMenu}>
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                         </svg>
