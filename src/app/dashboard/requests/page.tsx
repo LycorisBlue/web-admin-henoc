@@ -1,8 +1,10 @@
+// src/app/dashboard/requests/page.tsx (modifié)
 'use client';
 
 import { useState } from 'react';
 import Link from 'next/link';
 import RequestsTable from '@/components/requests/RequestsTable';
+import AssignedRequestsTable from '@/components/requests/AssignedRequestsTable';
 
 /**
  * Page principale des demandes clients
@@ -87,6 +89,19 @@ export default function RequestsPage() {
                         Créer une demande
                     </Link>
                 </div>
+            </div>
+
+            {/* Section des demandes assignées */}
+            <div className="mb-8">
+                <AssignedRequestsTable />
+            </div>
+
+            {/* Titre de section pour toutes les demandes */}
+            <div className="mb-4 mt-10">
+                <h2 className="text-xl font-semibold text-gray-800">Toutes les demandes</h2>
+                <p className="text-sm text-gray-500 mt-1">
+                    Liste complète de toutes les demandes clients
+                </p>
             </div>
 
             {/* Tableau des demandes */}
