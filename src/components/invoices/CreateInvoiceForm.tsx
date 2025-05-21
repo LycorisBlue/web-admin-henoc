@@ -1,10 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { CreateInvoiceParams, InvoiceItemCreate, InvoiceFeeCreate } from '@/types/invoice';
 import invoiceService from '@/services/invoiceService';
 import { formatCurrency } from './InvoiceStatusBadge';
+import feeTypeService, { FeeType } from '@/types/feeTypeService';
+
 
 interface CreateInvoiceFormProps {
     requestId: string;
@@ -28,18 +30,41 @@ export default function CreateInvoiceForm({ requestId, onSuccess }: CreateInvoic
     const [error, setError] = useState<string | null>(null);
     const [itemErrors, setItemErrors] = useState<(string | null)[]>([null]);
 
-    // Types de frais disponibles (à remplacer par une requête API en production)
-    const feeTypes = [
-        { id: '550e8400-e29b-41d4-a716-446655440010', name: 'Livraison', description: 'Frais de livraison standard' },
-        { id: '550e8400-e29b-41d4-a716-446655440011', name: 'Express', description: 'Supplément pour livraison express' },
-        { id: '550e8400-e29b-41d4-a716-446655440012', name: 'Emballage', description: 'Frais d\'emballage spécial' },
-        { id: '550e8400-e29b-41d4-a716-446655440013', name: 'Assurance', description: 'Assurance pour la commande' },
-    ];
+
+    // Nouvel état pour les types de frais
+    const [feeTypes, setFeeTypes] = useState<FeeType[]>([]);
+    const [isFeeTypesLoading, setIsFeeTypesLoading] = useState(true);
+    const [feeTypesError, setFeeTypesError] = useState<string | null>(null);
+
+    // Chargement des types de frais au montage du composant
+    useEffect(() => {
+        const loadFeeTypes = async () => {
+            try {
+                setIsFeeTypesLoading(true);
+                setFeeTypesError(null);
+
+                const response = await feeTypeService.getAllFeeTypes();
+                setFeeTypes(response || []);
+            } catch (err) {
+                console.error('Erreur lors du chargement des types de frais:', err);
+                setFeeTypesError('Impossible de charger les types de frais. Veuillez réessayer.');
+            } finally {
+                setIsFeeTypesLoading(false);
+            }
+        };
+
+        loadFeeTypes();
+    }, []);
 
     // Ajouter un nouvel article
     const addItem = () => {
         setItems([...items, { name: '', unit_price: 0, quantity: 1 }]);
         setItemErrors([...itemErrors, null]);
+    };
+
+    const getFeeTypeName = (feeTypeId: string) => {
+        const feeType = feeTypes.find(type => type.id === feeTypeId);
+        return feeType ? feeType.name : 'Frais inconnu';
     };
 
     // Supprimer un article
@@ -127,12 +152,6 @@ export default function CreateInvoiceForm({ requestId, onSuccess }: CreateInvoic
     // Calculer le total général
     const calculateGrandTotal = () => {
         return calculateItemsTotal() + calculateFeesTotal();
-    };
-
-    // Récupérer le nom d'un type de frais
-    const getFeeTypeName = (feeTypeId: string) => {
-        const feeType = feeTypes.find(type => type.id === feeTypeId);
-        return feeType ? feeType.name : 'Frais inconnu';
     };
 
     // Valider le formulaire
@@ -373,26 +392,54 @@ export default function CreateInvoiceForm({ requestId, onSuccess }: CreateInvoic
                     {/* Menu pour ajouter un type de frais */}
                     <div className="relative inline-block text-left">
                         <div>
-                            <select
-                                onChange={(e) => {
-                                    if (e.target.value) {
-                                        addFee(e.target.value);
-                                        e.target.value = ''; // Réinitialiser la sélection
-                                    }
-                                }}
-                                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
-                            >
-                                <option value="">Ajouter des frais...</option>
-                                {feeTypes.map((type) => (
-                                    <option
-                                        key={type.id}
-                                        value={type.id}
-                                        disabled={fees.some(fee => fee.fee_type_id === type.id)}
+                            {isFeeTypesLoading ? (
+                                <div className="flex items-center space-x-2">
+                                    <svg className="animate-spin h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    <span className="text-sm text-gray-500">Chargement des types de frais...</span>
+                                </div>
+                            ) : feeTypesError ? (
+                                <div className="flex items-center space-x-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                                    </svg>
+                                    <span className="text-sm text-red-500">{feeTypesError}</span>
+                                    <button
+                                        onClick={() => loadFeeTypes()}
+                                        className="text-xs text-blue-600 hover:text-blue-800 underline"
                                     >
-                                        {type.name} - {type.description}
+                                        Réessayer
+                                    </button>
+                                </div>
+                            ) : (
+                                <select
+                                    onChange={(e) => {
+                                        if (e.target.value) {
+                                            addFee(e.target.value);
+                                            e.target.value = ''; // Réinitialiser la sélection
+                                        }
+                                    }}
+                                    className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+                                    disabled={feeTypes.length === 0}
+                                >
+                                    <option value="">
+                                        {feeTypes.length === 0
+                                            ? "Aucun type de frais disponible"
+                                            : "Ajouter des frais..."}
                                     </option>
-                                ))}
-                            </select>
+                                    {feeTypes.map((type) => (
+                                        <option
+                                            key={type.id}
+                                            value={type.id}
+                                            disabled={fees.some(fee => fee.fee_type_id === type.id)}
+                                        >
+                                            {type.name}{type.description ? ` - ${type.description}` : ''}
+                                        </option>
+                                    ))}
+                                </select>
+                            )}
                         </div>
                     </div>
                 </div>
