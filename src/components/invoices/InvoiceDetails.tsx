@@ -6,6 +6,8 @@ import Link from 'next/link';
 import { InvoiceDetails as InvoiceDetailsType } from '@/types/invoice';
 import invoiceService from '@/services/invoiceService';
 import { InvoiceStatusBadge, PaymentStatusBadge, formatCurrency, formatDate } from './InvoiceStatusBadge';
+import { InvoiceDownloadButton } from '@/utils/pdfGenerator';
+
 
 interface InvoiceDetailsProps {
     invoiceId: string;
@@ -42,6 +44,7 @@ export default function InvoiceDetails({ invoiceId, onStatusUpdate }: InvoiceDet
 
         loadInvoiceDetails();
     }, [invoiceId]);
+
 
     // Afficher l'état de chargement
     if (isLoading) {
@@ -446,15 +449,9 @@ export default function InvoiceDetails({ invoiceId, onStatusUpdate }: InvoiceDet
                                         Enregistrer un paiement
                                     </Link>
                                 )}
-                                <button
-                                    onClick={() => window.print()}
-                                    className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 font-medium"
-                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                                    </svg>
-                                    Imprimer la facture
-                                </button>
+                                {invoice.status === 'en_attente' && (
+                                    <InvoiceDownloadButton invoice={invoice} />
+                                )}
                             </div>
                         </div>
                     </div>

@@ -19,6 +19,7 @@ export default function RequestsByStatusChart() {
             try {
                 setIsLoading(true);
                 const requestsByStatus = await visualizationService.getRequestsByStatus();
+                console.log('Données de statut des demandes:', requestsByStatus);
                 setData(requestsByStatus);
                 setIsLoading(false);
             } catch (error) {

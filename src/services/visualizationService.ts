@@ -214,6 +214,7 @@ const visualizationService = {
 
       // Traiter les factures
       const invoices = invoicesResponse.data.invoices || [];
+      console.log("data", invoices);
       invoices.forEach((invoice: any) => {
         const createdDate = invoice.created_at.split("T")[0];
         const dataPoint = timeSeriesData.find((d) => d.date === createdDate);

@@ -56,8 +56,7 @@ export default function ActivityTimeSeriesChart() {
                     <div className="space-y-1 mt-1">
                         {payload.map((entry: any, index: number) => (
                             <p key={index} className="text-xs" style={{ color: entry.color }}>
-                                {entry.name === 'requests' ? 'Demandes' :
-                                    entry.name === 'invoices' ? 'Factures' : 'Paiements'}: {entry.value}
+                                {entry.name}: {entry.value}
                             </p>
                         ))}
                     </div>
