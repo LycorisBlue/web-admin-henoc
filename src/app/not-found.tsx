@@ -1,4 +1,5 @@
-// src/app/not-found.tsx
+'use client'; // Marquer comme composant client pour permettre les gestionnaires d'événements
+
 import Link from 'next/link';
 
 /**
@@ -6,6 +7,11 @@ import Link from 'next/link';
  * Cette page s'affiche lorsque l'utilisateur accède à une route qui n'existe pas
  */
 export default function NotFound() {
+    // Maintenant on peut utiliser des gestionnaires d'événements car c'est un composant client
+    const handleGoBack = () => {
+        window.history.back();
+    };
+
     return (
         <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 px-4">
             <div className="text-center max-w-md">
@@ -40,7 +46,7 @@ export default function NotFound() {
                         Retour à l&apos;accueil
                     </Link>
                     <button
-                        onClick={() => window.history.back()}
+                        onClick={handleGoBack}
                         className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
                     >
                         Page précédente

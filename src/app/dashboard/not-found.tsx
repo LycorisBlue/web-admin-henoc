@@ -1,4 +1,3 @@
-// src/app/dashboard/not-found.tsx
 'use client';
 
 import Link from 'next/link';
@@ -16,6 +15,11 @@ export default function DashboardNotFound() {
         const token = localStorage.getItem('accessToken');
         setIsAuthenticated(!!token);
     }, []);
+
+    // Gestionnaire d'événement pour retourner à la page précédente
+    const handleGoBack = () => {
+        window.history.back();
+    };
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
@@ -42,7 +46,7 @@ export default function DashboardNotFound() {
 
                         {isAuthenticated ? (
                             <button
-                                onClick={() => window.history.back()}
+                                onClick={handleGoBack}
                                 className="block w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
                             >
                                 Page précédente
