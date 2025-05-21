@@ -5,7 +5,7 @@
 
 // Configuration de l'API
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "https://china-test.api-medev.com/";
+  process.env.NEXT_PUBLIC_API_URL || "https://china-test.api-medev.com";
 
 // Typages des méthodes HTTP
 type HttpMethod = "GET" | "POST" | "PUT" | "DELETE";
