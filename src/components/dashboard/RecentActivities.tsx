@@ -34,6 +34,7 @@ export default function RecentActivities() {
     const formatDate = (dateString: string): string => {
         try {
             return format(parseISO(dateString), 'dd MMM yyyy', { locale: fr });
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (error) {
             return dateString;
         }

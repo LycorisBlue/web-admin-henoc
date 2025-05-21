@@ -119,7 +119,7 @@ export default function PaymentsByMethodChart() {
                     <CartesianGrid strokeDasharray="3 3" vertical={false} />
                     <XAxis dataKey="method" tick={{ fontSize: 12 }} />
                     <YAxis
-                        tickFormatter={value => displayMode === 'amount'
+                        tickFormatter={(value: any)  => displayMode === 'amount'
                             ? `${Math.round(value / 1000)}k`
                             : formatNumber(value)
                         }

@@ -36,22 +36,23 @@ export default function CreateInvoiceForm({ requestId, onSuccess }: CreateInvoic
     const [isFeeTypesLoading, setIsFeeTypesLoading] = useState(true);
     const [feeTypesError, setFeeTypesError] = useState<string | null>(null);
 
+    const loadFeeTypes = async () => {
+        try {
+            setIsFeeTypesLoading(true);
+            setFeeTypesError(null);
+
+            const response = await feeTypeService.getAllFeeTypes();
+            setFeeTypes(response || []);
+        } catch (err) {
+            console.error('Erreur lors du chargement des types de frais:', err);
+            setFeeTypesError('Impossible de charger les types de frais. Veuillez réessayer.');
+        } finally {
+            setIsFeeTypesLoading(false);
+        }
+    };
     // Chargement des types de frais au montage du composant
     useEffect(() => {
-        const loadFeeTypes = async () => {
-            try {
-                setIsFeeTypesLoading(true);
-                setFeeTypesError(null);
 
-                const response = await feeTypeService.getAllFeeTypes();
-                setFeeTypes(response || []);
-            } catch (err) {
-                console.error('Erreur lors du chargement des types de frais:', err);
-                setFeeTypesError('Impossible de charger les types de frais. Veuillez réessayer.');
-            } finally {
-                setIsFeeTypesLoading(false);
-            }
-        };
 
         loadFeeTypes();
     }, []);

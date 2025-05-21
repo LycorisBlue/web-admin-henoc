@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, JSXElementConstructor, ReactElement, ReactNode, ReactPortal } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import visualizationService, { RequestsByStatusData } from '@/services/visualizationService';
 
@@ -92,7 +92,7 @@ export default function RequestsByStatusChart() {
                         paddingAngle={5}
                         dataKey="count"
                         nameKey="status"
-                        label={({ status, percent }) => `${Math.round(percent * 100)}%`}
+                        label={({ percent }: { percent: any }) => `${Math.round(percent * 100)}%`}
                         labelLine={false}
                     >
                         {data.map((entry, index) => (
@@ -104,7 +104,7 @@ export default function RequestsByStatusChart() {
                         layout="vertical"
                         verticalAlign="middle"
                         align="right"
-                        formatter={(value, entry, index) => <span className="text-sm text-gray-700">{value}</span>}
+                        formatter={(value: string | number | bigint | boolean | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | Promise<string | number | bigint | boolean | ReactPortal | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | null | undefined> | null | undefined, entry: any, index: any) => <span className="text-sm text-gray-700">{value}</span>}
                     />
                 </PieChart>
             </ResponsiveContainer>
