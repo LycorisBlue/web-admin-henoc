@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';  // Ajout de useEffect
+import { useState, useEffect, useCallback } from 'react';  // Ajout de useEffect
 import Link from 'next/link';
 import PaymentsTable from '@/components/payments/PaymentsTable';
 import paymentService from '@/services/paymentService';
@@ -25,9 +25,25 @@ export default function PaymentsPage() {
     const [statsPeriod, setStatsPeriod] = useState<'day' | 'week' | 'month' | 'year'>('month');
 
     // Charger les statistiques au montage du composant
+    const loadStats = useCallback(async () => {
+        try {
+            setStatsLoading(true);
+            setStatsError(null);
+
+            const data = await paymentService.getPaymentStats(statsPeriod);
+            setStats(data);
+        } catch (error) {
+            console.error('Erreur lors du chargement des statistiques:', error);
+            setStatsError('Impossible de charger les statistiques. Veuillez réessayer.');
+        } finally {
+            setStatsLoading(false);
+        }
+    }, [statsPeriod]); // Dépendance à statsPeriod
+
+    // Maintenant ajoutons loadStats comme dépendance du useEffect
     useEffect(() => {
         loadStats();
-    }, []);  // Dépendance vide pour exécuter uniquement au montage
+    }, [loadStats]);  // Ajout de loadStats comme dépendance
 
     // Fonction pour actualiser la liste des paiements
     const handleRefresh = async () => {
@@ -43,22 +59,6 @@ export default function PaymentsPage() {
         }, 1000);
     };
 
-    // Fonction pour charger les statistiques
-    const loadStats = async () => {
-        try {
-            setStatsLoading(true);
-            setStatsError(null);
-
-            const data = await paymentService.getPaymentStats(statsPeriod);
-            // console.log('Statistiques chargées:', data);  // Pour débogage
-            setStats(data);
-        } catch (error) {
-            console.error('Erreur lors du chargement des statistiques:', error);
-            setStatsError('Impossible de charger les statistiques. Veuillez réessayer.');
-        } finally {
-            setStatsLoading(false);
-        }
-    };
 
     // Charger les statistiques lors du changement de période
     const handlePeriodChange = async (period: 'day' | 'week' | 'month' | 'year') => {
