@@ -449,9 +449,7 @@ export default function InvoiceDetails({ invoiceId, onStatusUpdate }: InvoiceDet
                                         Enregistrer un paiement
                                     </Link>
                                 )}
-                                {invoice.status === 'en_attente' && (
-                                    <InvoiceDownloadButton invoice={invoice} />
-                                )}
+                                <InvoiceDownloadButton invoice={invoice} />
                             </div>
                         </div>
                     </div>
