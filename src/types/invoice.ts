@@ -45,6 +45,16 @@ export interface InvoiceItem {
   subtotal: number;
 }
 
+// Article pour la création (avec support de redistribution des frais)
+export interface InvoiceItemCreate {
+  name: string;
+  unit_price: number;
+  quantity: number;
+  // Propriétés pour la redistribution côté client uniquement
+  original_unit_price?: number; // Prix avant redistribution (pour affichage)
+  redistributed_amount?: number; // Montant redistribué sur cet article
+}
+
 // Frais additionnels
 export interface InvoiceFee {
   id: string;
@@ -54,6 +64,22 @@ export interface InvoiceFee {
     description: string;
   };
   amount: number;
+}
+
+// État local pour la redistribution des frais (côté client uniquement)
+export interface FeeRedistribution {
+  total_amount: number; // Montant total à redistribuer
+  is_enabled: boolean; // Si la redistribution est activée
+  distribution_method: "proportional" | "equal"; // Méthode de répartition
+}
+
+// Détail de redistribution par article (pour calculs internes)
+export interface ItemRedistributionDetail {
+  item_index: number;
+  original_subtotal: number;
+  redistributed_amount: number;
+  new_unit_price: number;
+  weight_percentage: number; // % du poids de cet article dans le total
 }
 
 // Paiement effectué sur une facture
@@ -173,13 +199,6 @@ export interface InvoicesListResponse {
 export interface InvoiceDetailsResponse {
   message: string;
   data: InvoiceDetails;
-}
-
-// Élément pour créer une facture (articles)
-export interface InvoiceItemCreate {
-  name: string;
-  unit_price: number;
-  quantity: number;
 }
 
 // Frais additionnels pour la création

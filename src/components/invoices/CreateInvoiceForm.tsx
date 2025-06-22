@@ -2,11 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { CreateInvoiceParams, InvoiceItemCreate, InvoiceFeeCreate } from '@/types/invoice';
+import { CreateInvoiceParams, InvoiceItemCreate, InvoiceFeeCreate, FeeRedistribution, ItemRedistributionDetail } from '@/types/invoice';
 import invoiceService from '@/services/invoiceService';
 import { formatCurrency } from './InvoiceStatusBadge';
 import feeTypeService, { FeeType } from '@/types/feeTypeService';
-
 
 interface CreateInvoiceFormProps {
     requestId: string;
@@ -14,7 +13,7 @@ interface CreateInvoiceFormProps {
 }
 
 /**
- * Formulaire de création d'une facture
+ * Formulaire de création d'une facture avec système de redistribution des frais
  */
 export default function CreateInvoiceForm({ requestId, onSuccess }: CreateInvoiceFormProps) {
     const router = useRouter();
@@ -25,13 +24,19 @@ export default function CreateInvoiceForm({ requestId, onSuccess }: CreateInvoic
     ]);
     const [fees, setFees] = useState<InvoiceFeeCreate[]>([]);
 
+    // État pour la redistribution des frais
+    const [feeRedistribution, setFeeRedistribution] = useState<FeeRedistribution>({
+        total_amount: 0,
+        is_enabled: false,
+        distribution_method: 'proportional'
+    });
+
     // État pour le chargement et les erreurs
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [itemErrors, setItemErrors] = useState<(string | null)[]>([null]);
 
-
-    // Nouvel état pour les types de frais
+    // État pour les types de frais
     const [feeTypes, setFeeTypes] = useState<FeeType[]>([]);
     const [isFeeTypesLoading, setIsFeeTypesLoading] = useState(true);
     const [feeTypesError, setFeeTypesError] = useState<string | null>(null);
@@ -40,7 +45,6 @@ export default function CreateInvoiceForm({ requestId, onSuccess }: CreateInvoic
         try {
             setIsFeeTypesLoading(true);
             setFeeTypesError(null);
-
             const response = await feeTypeService.getAllFeeTypes();
             setFeeTypes(response || []);
         } catch (err) {
@@ -50,12 +54,66 @@ export default function CreateInvoiceForm({ requestId, onSuccess }: CreateInvoic
             setIsFeeTypesLoading(false);
         }
     };
+
     // Chargement des types de frais au montage du composant
     useEffect(() => {
-
-
         loadFeeTypes();
     }, []);
+
+    // Fonction pour calculer la redistribution des frais
+    const calculateFeeRedistribution = (): ItemRedistributionDetail[] => {
+        if (!feeRedistribution.is_enabled || feeRedistribution.total_amount <= 0) {
+            return [];
+        }
+
+        const validItems = items.filter(item => item.name.trim() && item.unit_price > 0 && item.quantity > 0);
+        if (validItems.length === 0) return [];
+
+        const totalOriginalAmount = validItems.reduce((sum, item) => sum + (item.unit_price * item.quantity), 0);
+
+        if (totalOriginalAmount === 0) return [];
+
+        return validItems.map((item, index) => {
+            const originalSubtotal = item.unit_price * item.quantity;
+            const weightPercentage = originalSubtotal / totalOriginalAmount;
+
+            let redistributedAmount = 0;
+            if (feeRedistribution.distribution_method === 'proportional') {
+                redistributedAmount = feeRedistribution.total_amount * weightPercentage;
+            } else {
+                redistributedAmount = feeRedistribution.total_amount / validItems.length;
+            }
+
+            const newUnitPrice = (originalSubtotal + redistributedAmount) / item.quantity;
+
+            return {
+                item_index: index,
+                original_subtotal: originalSubtotal,
+                redistributed_amount: redistributedAmount,
+                new_unit_price: newUnitPrice,
+                weight_percentage: weightPercentage * 100
+            };
+        });
+    };
+
+    // Fonction pour obtenir le prix unitaire affiché (avec ou sans redistribution)
+    const getDisplayedUnitPrice = (item: InvoiceItemCreate, index: number): number => {
+        if (!feeRedistribution.is_enabled) {
+            return item.unit_price;
+        }
+
+        const redistributionDetails = calculateFeeRedistribution();
+        const detail = redistributionDetails.find(d => d.item_index === index);
+        return detail ? detail.new_unit_price : item.unit_price;
+    };
+
+    // Fonction pour obtenir le montant redistribué pour un article
+    const getRedistributedAmount = (index: number): number => {
+        if (!feeRedistribution.is_enabled) return 0;
+        const redistributionDetails = calculateFeeRedistribution();
+        const detail = redistributionDetails.find(d => d.item_index === index);
+        return detail ? detail.redistributed_amount : 0;
+    };
 
     // Ajouter un nouvel article
     const addItem = () => {
@@ -71,7 +129,6 @@ export default function CreateInvoiceForm({ requestId, onSuccess }: CreateInvoic
     // Supprimer un article
     const removeItem = (index: number) => {
         if (items.length === 1) {
-            // Garder au moins un article
             setError('La facture doit contenir au moins un article');
             return;
         }
@@ -90,16 +147,17 @@ export default function CreateInvoiceForm({ requestId, onSuccess }: CreateInvoic
         const newItems = [...items];
 
         if (field === 'unit_price' || field === 'quantity') {
-            // Convertir en nombre
-            newItems[index][field] = typeof value === 'string' ? parseFloat(value) || 0 : value;
-        } else {
-            // Mettre à jour le nom
+            // TypeScript sait que field est 'unit_price' | 'quantity' (tous deux de type number)
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (newItems[index] as any)[field] = typeof value === 'string' ? parseFloat(value) || 0 : value;
+        } else if (field === 'name') {
+            // TypeScript sait que field est 'name' (de type string)
             newItems[index][field] = value as string;
         }
+        // Note: on ignore les champs optionnels car ils ne sont pas modifiés directement
 
         setItems(newItems);
 
-        // Réinitialiser l'erreur pour cet article si le champ a été corrigé
         if (itemErrors[index]) {
             const newErrors = [...itemErrors];
             newErrors[index] = null;
@@ -107,13 +165,13 @@ export default function CreateInvoiceForm({ requestId, onSuccess }: CreateInvoic
         }
     };
 
+    
+
     // Ajouter un frais
     const addFee = (feeTypeId: string) => {
-        // Vérifier si ce type de frais existe déjà
         const existingFeeIndex = fees.findIndex(fee => fee.fee_type_id === feeTypeId);
 
         if (existingFeeIndex >= 0) {
-            // Le frais existe déjà, ne pas l'ajouter en double
             setError('Ce type de frais est déjà ajouté à la facture');
             return;
         }
@@ -135,17 +193,18 @@ export default function CreateInvoiceForm({ requestId, onSuccess }: CreateInvoic
         setFees(newFees);
     };
 
-    // Calculer le sous-total d'un article
-    const calculateSubtotal = (item: InvoiceItemCreate) => {
-        return item.unit_price * item.quantity;
+    // Calculer le sous-total d'un article (avec redistribution si activée)
+    const calculateSubtotal = (item: InvoiceItemCreate, index: number) => {
+        const displayedPrice = getDisplayedUnitPrice(item, index);
+        return displayedPrice * item.quantity;
     };
 
-    // Calculer le total des articles
+    // Calculer le total des articles (avec redistribution)
     const calculateItemsTotal = () => {
-        return items.reduce((sum, item) => sum + calculateSubtotal(item), 0);
+        return items.reduce((sum, item, index) => sum + calculateSubtotal(item, index), 0);
     };
 
-    // Calculer le total des frais
+    // Calculer le total des frais traditionnels
     const calculateFeesTotal = () => {
         return fees.reduce((sum, fee) => sum + fee.amount, 0);
     };
@@ -153,6 +212,11 @@ export default function CreateInvoiceForm({ requestId, onSuccess }: CreateInvoic
     // Calculer le total général
     const calculateGrandTotal = () => {
         return calculateItemsTotal() + calculateFeesTotal();
+    };
+
+    // Calculer le total original (sans redistribution) pour comparaison
+    const calculateOriginalItemsTotal = () => {
+        return items.reduce((sum, item) => sum + (item.unit_price * item.quantity), 0);
     };
 
     // Valider le formulaire
@@ -176,9 +240,14 @@ export default function CreateInvoiceForm({ requestId, onSuccess }: CreateInvoic
 
         setItemErrors(newItemErrors);
 
-        // Vérifier qu'il y a au moins un article
         if (items.length === 0) {
             setError('La facture doit contenir au moins un article');
+            isValid = false;
+        }
+
+        // Validation spécifique à la redistribution
+        if (feeRedistribution.is_enabled && feeRedistribution.total_amount <= 0) {
+            setError('Le montant à redistribuer doit être supérieur à 0');
             isValid = false;
         }
 
@@ -197,18 +266,38 @@ export default function CreateInvoiceForm({ requestId, onSuccess }: CreateInvoic
         setError(null);
 
         try {
+            // Préparer les articles avec les prix ajustés si redistribution activée
+            const finalItems: InvoiceItemCreate[] = items.map((item, index) => {
+                if (feeRedistribution.is_enabled) {
+                    const redistributionDetails = calculateFeeRedistribution();
+                    const detail = redistributionDetails.find(d => d.item_index === index);
+
+                    return {
+                        name: item.name,
+                        unit_price: detail ? detail.new_unit_price : item.unit_price,
+                        quantity: item.quantity,
+                        original_unit_price: item.unit_price,
+                        redistributed_amount: detail ? detail.redistributed_amount : 0
+                    };
+                }
+
+                return {
+                    name: item.name,
+                    unit_price: item.unit_price,
+                    quantity: item.quantity
+                };
+            });
+
             const invoiceParams: CreateInvoiceParams = {
-                items,
+                items: finalItems,
                 fees: fees.length > 0 ? fees : undefined
             };
 
             await invoiceService.createInvoice(requestId, invoiceParams);
 
-            // Rediriger ou notifier du succès
             if (onSuccess) {
                 onSuccess();
             } else {
-                // Rediriger vers la page de la demande
                 router.push(`/dashboard/requests/${requestId}`);
             }
         } catch (err) {
@@ -234,6 +323,75 @@ export default function CreateInvoiceForm({ requestId, onSuccess }: CreateInvoic
             </div>
 
             <form onSubmit={handleSubmit} className="p-6">
+                {/* Section de redistribution des frais */}
+                <div className="mb-8 bg-blue-50 p-4 rounded-lg border border-blue-200">
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-base font-medium text-blue-900">Redistribution des frais</h3>
+                        <label className="flex items-center">
+                            <input
+                                type="checkbox"
+                                checked={feeRedistribution.is_enabled}
+                                onChange={(e) => setFeeRedistribution(prev => ({
+                                    ...prev,
+                                    is_enabled: e.target.checked
+                                }))}
+                                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <span className="ml-2 text-sm text-blue-700">Activer la redistribution</span>
+                        </label>
+                    </div>
+
+                    {feeRedistribution.is_enabled && (
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-blue-700 mb-1">
+                                        Montant total à redistribuer
+                                    </label>
+                                    <input
+                                        type="number"
+                                        value={feeRedistribution.total_amount}
+                                        onChange={(e) => setFeeRedistribution(prev => ({
+                                            ...prev,
+                                            total_amount: parseFloat(e.target.value) || 0
+                                        }))}
+                                        className="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                        placeholder="0"
+                                        min="0"
+                                        step="0.01"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-blue-700 mb-1">
+                                        Méthode de répartition
+                                    </label>
+                                    <select
+                                        value={feeRedistribution.distribution_method}
+                                        onChange={(e) => setFeeRedistribution(prev => ({
+                                            ...prev,
+                                            distribution_method: e.target.value as 'proportional' | 'equal'
+                                        }))}
+                                        className="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                    >
+                                        <option value="proportional">Proportionnelle au montant</option>
+                                        <option value="equal">Égale sur tous les articles</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            {feeRedistribution.total_amount > 0 && (
+                                <div className="bg-blue-100 p-3 rounded-md">
+                                    <p className="text-sm text-blue-800">
+                                        <strong>Aperçu :</strong> {formatCurrency(feeRedistribution.total_amount)} seront répartis
+                                        {feeRedistribution.distribution_method === 'proportional' ? ' proportionnellement' : ' également'}
+                                        sur les articles. Les clients verront directement les prix ajustés.
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+
                 {/* Section des articles */}
                 <div className="mb-8">
                     <h3 className="text-base font-medium text-gray-900 mb-4">Articles</h3>
@@ -272,7 +430,7 @@ export default function CreateInvoiceForm({ requestId, onSuccess }: CreateInvoic
                                         {/* Prix unitaire */}
                                         <div className="flex-1">
                                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                Prix unitaire
+                                                Prix unitaire {feeRedistribution.is_enabled ? '(original)' : ''}
                                             </label>
                                             <input
                                                 type="number"
@@ -305,10 +463,35 @@ export default function CreateInvoiceForm({ requestId, onSuccess }: CreateInvoic
                                     </div>
                                 </div>
 
+                                {/* Affichage de la redistribution si activée */}
+                                {feeRedistribution.is_enabled && feeRedistribution.total_amount > 0 && (
+                                    <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                                        <div className="text-sm space-y-1">
+                                            <div className="flex justify-between">
+                                                <span className="text-yellow-700">Prix unitaire ajusté:</span>
+                                                <span className="font-medium text-yellow-800">
+                                                    {formatCurrency(getDisplayedUnitPrice(item, index))}
+                                                </span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-yellow-700">Frais redistribués:</span>
+                                                <span className="text-yellow-800">
+                                                    +{formatCurrency(getRedistributedAmount(index))}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
                                 {/* Sous-total */}
                                 <div className="mt-2 text-right">
                                     <span className="text-sm text-gray-500">Sous-total: </span>
-                                    <span className="text-sm font-medium">{formatCurrency(calculateSubtotal(item))}</span>
+                                    <span className="text-sm font-medium">{formatCurrency(calculateSubtotal(item, index))}</span>
+                                    {feeRedistribution.is_enabled && (
+                                        <div className="text-xs text-gray-400">
+                                            (Original: {formatCurrency(item.unit_price * item.quantity)})
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Afficher l'erreur pour cet article si présente */}
@@ -334,9 +517,12 @@ export default function CreateInvoiceForm({ requestId, onSuccess }: CreateInvoic
                     </button>
                 </div>
 
-                {/* Section des frais */}
+                {/* Section des frais traditionnels */}
                 <div className="mb-8">
-                    <h3 className="text-base font-medium text-gray-900 mb-4">Frais additionnels (optionnel)</h3>
+                    <h3 className="text-base font-medium text-gray-900 mb-4">Frais additionnels traditionnels (optionnel)</h3>
+                    <p className="text-sm text-gray-500 mb-4">
+                        Ces frais apparaîtront séparément sur la facture et seront stockés en base de données.
+                    </p>
 
                     {fees.length > 0 ? (
                         <div className="space-y-4 mb-4">
@@ -386,7 +572,7 @@ export default function CreateInvoiceForm({ requestId, onSuccess }: CreateInvoic
                         </div>
                     ) : (
                         <div className="text-sm text-gray-500 mb-4">
-                            Aucun frais additionnel pour le moment.
+                            Aucun frais additionnel traditionnel pour le moment.
                         </div>
                     )}
 
@@ -419,7 +605,7 @@ export default function CreateInvoiceForm({ requestId, onSuccess }: CreateInvoic
                                     onChange={(e) => {
                                         if (e.target.value) {
                                             addFee(e.target.value);
-                                            e.target.value = ''; // Réinitialiser la sélection
+                                            e.target.value = '';
                                         }
                                     }}
                                     className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
@@ -428,7 +614,7 @@ export default function CreateInvoiceForm({ requestId, onSuccess }: CreateInvoic
                                     <option value="">
                                         {feeTypes.length === 0
                                             ? "Aucun type de frais disponible"
-                                            : "Ajouter des frais..."}
+                                            : "Ajouter des frais traditionnels..."}
                                     </option>
                                     {feeTypes.map((type) => (
                                         <option
@@ -450,6 +636,19 @@ export default function CreateInvoiceForm({ requestId, onSuccess }: CreateInvoic
                     <h3 className="text-base font-medium text-gray-900 mb-3">Récapitulatif</h3>
 
                     <div className="space-y-2">
+                        {feeRedistribution.is_enabled && (
+                            <>
+                                <div className="flex justify-between items-center text-sm text-gray-600">
+                                    <span>Total original des articles:</span>
+                                    <span>{formatCurrency(calculateOriginalItemsTotal())}</span>
+                                </div>
+                                <div className="flex justify-between items-center text-sm text-blue-600">
+                                    <span>+ Frais redistribués:</span>
+                                    <span>{formatCurrency(feeRedistribution.total_amount)}</span>
+                                </div>
+                            </>
+                        )}
+
                         <div className="flex justify-between items-center">
                             <span className="text-sm text-gray-500">Total des articles:</span>
                             <span className="text-sm font-medium">{formatCurrency(calculateItemsTotal())}</span>
@@ -458,7 +657,7 @@ export default function CreateInvoiceForm({ requestId, onSuccess }: CreateInvoic
                         {fees.length > 0 && (
                             <>
                                 <div className="flex justify-between items-center">
-                                    <span className="text-sm text-gray-500">Total des frais:</span>
+                                    <span className="text-sm text-gray-500">Total des frais traditionnels:</span>
                                     <span className="text-sm font-medium">{formatCurrency(calculateFeesTotal())}</span>
                                 </div>
                                 <hr className="my-2" />
@@ -469,6 +668,16 @@ export default function CreateInvoiceForm({ requestId, onSuccess }: CreateInvoic
                             <span className="text-sm font-medium text-gray-900">Montant total:</span>
                             <span className="text-base font-bold text-gray-900">{formatCurrency(calculateGrandTotal())}</span>
                         </div>
+
+                        {feeRedistribution.is_enabled && feeRedistribution.total_amount > 0 && (
+                            <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-md">
+                                <p className="text-sm text-green-700">
+                                    <strong>Pour le client:</strong> Les frais de {formatCurrency(feeRedistribution.total_amount)} sont
+                                    intégrés dans les prix unitaires. Le client verra un total de {formatCurrency(calculateGrandTotal())}
+                                    sans frais séparés apparents.
+                                </p>
+                            </div>
+                        )}
                     </div>
                 </div>
 
